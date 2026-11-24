@@ -7,8 +7,8 @@ const sdk = ObservabilitySdk.start({
 });
 const observe = sdk.observe();
 const attributes = { "extension.name": "task-t", "task.type": "diagnosis", "task.object": "router-17" };
-const span = observe.trace("message/send", SignalKind.CLIENT, {
-  "operation.name": "message/send",
+const span = observe.trace("SendMessage", SignalKind.CLIENT, {
+  "operation.name": "SendMessage",
   "task_id": "task-001",
   ...attributes,
 });

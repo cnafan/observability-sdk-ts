@@ -85,12 +85,16 @@ export function validateAttributes(
 function convertValue(
   key: string,
   value: unknown,
-  valueType: "string" | "integer" | "string_array",
+  valueType: "string" | "integer" | "boolean" | "string_array",
   allowedValues: ReadonlySet<string>,
 ): AttributeValue {
   if (valueType === "integer") {
     if (typeof value !== "number" || !Number.isSafeInteger(value)) throw new TypeError("attribute must be a safe integer");
     if (key === "parts.number" && value < 0) throw new TypeError("parts.number cannot be negative");
+    return value;
+  }
+  if (valueType === "boolean") {
+    if (typeof value !== "boolean") throw new TypeError("attribute must be a boolean");
     return value;
   }
   if (valueType === "string_array") {
@@ -105,9 +109,34 @@ function convertValue(
     result = value.toLowerCase();
     if (!allowedValues.has(result)) throw new TypeError("attribute has an unsupported value");
   }
-  if (key === "gen_ai.system" && result !== "A2A") throw new TypeError("gen_ai.system must be A2A");
+  if (key === "gen_ai.system" && result !== "a2a") throw new TypeError("gen_ai.system must be a2a");
   if (key === "operation.name" && !result.trim()) throw new TypeError("operation.name must not be blank");
   return clean(result);
+}
+
+export function convertGeneralLogAttributes(
+  attributes: Readonly<Record<string, unknown>> | undefined,
+): Attributes {
+  const input = attributes ?? {};
+  if (typeof input !== "object" || input === null || Array.isArray(input)) throw new TypeError("attributes must be a mapping");
+
+  const converted = Object.create(null) as Record<string, AttributeValue>;
+  for (const [key, value] of Object.entries(input)) {
+    if (!key.trim() || value === null || value === undefined) throw new TypeError("invalid general log attribute");
+    if (typeof value === "string") converted[key] = clean(value);
+    else if (typeof value === "boolean") converted[key] = value;
+    else if (typeof value === "number") {
+      if (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value))) {
+        throw new TypeError("invalid general log number");
+      }
+      converted[key] = value;
+    } else if (Array.isArray(value) && value.every((item): item is string => typeof item === "string")) {
+      converted[key] = value.map(clean);
+    } else {
+      throw new TypeError("unsupported general log attribute type");
+    }
+  }
+  return converted;
 }
 
 export function metricShortName(name: string): string {
